@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One Word</title>
+<meta property="og:title" content="One Word">
+<meta property="og:description" content="A daily 7-letter word game. Guess letters by position.">
+<link rel="icon" type="image/png" href="oneword-favicon.png">
+<meta property="og:image" content="https://thehumanside.tech/oneword/oneword.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://thehumanside.tech/oneword/oneword.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans','Segoe UI',sans-serif;background:#0a0a0f;color:#e8e6e1;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+::selection{background:rgba(240,194,127,0.3)}
+.bg-gradient{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 0%,#1a1a2e 0%,#0a0a0f 70%);z-index:0}
+.game-wrap{position:relative;z-index:1;width:100%;max-width:520px;padding:0 20px}
+.header{text-align:center;padding:32px 0 8px;border-bottom:1px solid #222236}
+.header h1{font-size:28px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;background:linear-gradient(135deg,#f0c27f,#fc5c7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{font-size:13px;color:#6b6b80;margin:6px 0 12px;letter-spacing:0.04em}
+.streak-bar{display:flex;justify-content:center;gap:24px;padding:8px 0 4px;font-size:12px;color:#5a5a70}
+.streak-bar span{color:#f0c27f;font-weight:700}
+.stats{display:flex;justify-content:center;gap:32px;padding:16px 0;font-size:13px;color:#8888a0}
+.stats .num{font-size:22px;font-weight:700}
+.stats .num.green{color:#7fdbca}
+.stats .num.red{color:#fc5c7d}
+.stats .num.gold{color:#f0c27f}
+.meter{width:100%;height:4px;background:#1a1a2e;border-radius:2px;overflow:hidden;margin-bottom:24px}
+.meter-fill{height:100%;border-radius:2px;transition:width 0.4s ease,background 0.4s ease}
+.tiles{display:flex;justify-content:center;gap:8px;margin-bottom:12px;perspective:800px}
+.tile{width:58px;height:66px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:all 0.2s ease;border:2px solid #2a2a3a;background:#141420}
+.tile.revealed{background:linear-gradient(145deg,#1a4d3a,#0f3326);border-color:#2a7d5a;box-shadow:0 0 15px rgba(42,125,90,0.2);cursor:default}
+.tile.selected{background:#2a2a4a;border-color:#f0c27f;box-shadow:0 0 20px rgba(240,194,127,0.15)}
+.tile .pos{position:absolute;top:4px;left:7px;font-size:9px;color:#4a4a60;font-weight:600}
+.tile.revealed .pos{color:#4da67a}
+.tile .letter{font-size:26px;font-weight:700;letter-spacing:0.02em;color:#e8e6e1;margin-top:4px}
+.tile.revealed .letter{color:#7fdbca}
+.tile .wrong-letters{position:absolute;bottom:4px;font-size:8px;color:#fc5c7d;font-weight:600}
+.dupe-msg{position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#2a2a4a;color:#f0c27f;font-size:10px;font-weight:600;padding:4px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:10;animation:fadeUp 1.2s ease forwards}
+.instruction{text-align:center;font-size:13px;color:#6b6b80;margin-bottom:20px;min-height:20px}
+.keyboard{margin-bottom:24px}
+.kb-row{display:flex;justify-content:center;gap:5px;margin-bottom:5px}
+.kb-key{width:34px;height:42px;border-radius:6px;border:none;background:#1e1e32;color:#c8c8d8;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.15s ease;font-family:'DM Sans','Segoe UI',sans-serif}
+.kb-key:hover{filter:brightness(1.15)}
+.kb-key.dimmed{background:#1a1a1a;color:#3a3a40;cursor:default;opacity:0.4}
+.game-over{text-align:center;padding:24px 0;animation:fadeIn 0.5s ease}
+.win-text{font-size:36px;font-weight:700;background:linear-gradient(135deg,#7fdbca,#f0c27f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.lose-text{font-size:28px;font-weight:700;color:#fc5c7d;margin-bottom:8px}
+.reveal-word{font-size:32px;font-weight:700;letter-spacing:0.15em;color:#f0c27f}
+.tomorrow-msg{color:#6b6b80;font-size:13px;margin-top:12px}
+.share-btn{margin-top:16px;padding:10px 24px;border-radius:8px;border:1px solid #3a3a50;background:linear-gradient(135deg,#1a1a3a,#2a2a4a);color:#a78bfa;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:0.06em;font-family:'DM Sans','Segoe UI',sans-serif;transition:all 0.2s ease}
+.share-btn:hover{filter:brightness(1.15)}
+.copied-toast{display:inline-block;margin-left:8px;color:#7fdbca;font-size:12px;font-weight:600;animation:fadeIn 0.3s ease}
+.how-to{margin-top:16px;padding:16px 20px;background:#111118;border-radius:10px;border:1px solid #1e1e2e;margin-bottom:32px}
+.how-to h3{font-size:13px;color:#6b6b80;margin:0 0 8px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase}
+.how-to ul{margin:0;padding:0 0 0 16px;font-size:13px;color:#5a5a70;line-height:1.7}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+@keyframes fadeUp{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1;transform:translateX(-50%) translateY(-4px)}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.shake{animation:shake 0.4s ease}
+.pop{transform:scale(1.1)}
+</style>
+</head>
+<body>
+<div class="bg-gradient"></div>
+<div class="game-wrap">
+  <div class="header">
+    <h1>One Word</h1>
+    <p>Guess letters by position &middot; Reveal the 7-letter word</p>
+  </div>
+  <div class="streak-bar" id="streak-bar"></div>
+  <div class="stats">
+    <div style="text-align:center"><div class="num gold" id="remaining">20</div><div>remaining</div></div>
+    <div style="text-align:center"><div class="num green" id="revealed-count">0</div><div>revealed</div></div>
+    <div style="text-align:center"><div class="num red" id="wrong-count">0</div><div>wrong</div></div>
+  </div>
+  <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="instruction" id="instruction">Tap a tile to start guessing</div>
+  <div class="keyboard" id="keyboard"></div>
+  <div class="game-over" id="game-over" style="display:none"></div>
+  <div class="how-to">
+    <h3>How to Play</h3>
+    <ul>
+      <li>A new word every day &mdash; same word for everyone</li>
+      <li>Tap any blank tile to select it</li>
+      <li>Guess what letter belongs in that position</li>
+      <li>Correct letters lock in &mdash; wrong guesses cost you</li>
+      <li>Fill in all 7 letters to win!</li>
+      <li>You have 20 wrong guesses total</li>
+    </ul>
+  </div>
+</div>
+<script>
+var WORDS=[
+"ABALONE","ABANDON","ABILITY","ABOLISH","ABDOMEN","ABYSSAL","ACADEMY","ACCOUNT","ACHIEVE",
+"ACIDITY","ACQUIRE","ACROBAT","ACRONYM","ACRYLIC","ACTRESS","ADAPTOR","ADDRESS","ADJOURN","ADMIRAL",
+"ADVANCE","ADVISOR","AERATOR","AEROSOL","AFFABLE","AFFLICT","AFFRONT","AGAINST","AGELESS",
+"AGENDUM","AGILITY","AGONIZE","AILMENT","AIRDROP","AIRFARE","AIRFLOW","AIRFOIL","AIRHEAD","AIRLIFT",
+"AIRLINE","AIRMAIL","AIRPLAY","AIRPORT","AIRSHIP","AIRSHOW","AIRSICK","AIRTIME","AIRWAVE","ALAMODE",
+"ALCHEMY","ALCOHOL","ALFALFA","ALGEBRA","ALIMONY","ALKALIC","ALLERGY","ALMANAC","ALREADY",
+"ALRIGHT","ALUMNUS","ALVEOLI","AMATEUR","AMAZING","AMBIENT","AMBLING","AMENITY",
+"AMIABLE","AMMONIA","AMNESIA","AMNESTY","AMPLIFY","ANAGRAM","ANALOGY","ANALYST","ANALYZE","ANARCHY",
+"ANATOMY","ANCHOVY","ANCIENT","ANDROID","ANEMONE","ANGELIC","ANGRIER","ANGRILY","ANGUISH","ANGULAR",
+"ANIMALS","ANIMATE","ANNUITY","ANSWERS","ANTACID","ANTENNA","ANTHILL","ANTHRAX","ANTIFOG","ANTIQUE",
+"ANTONYM","ANYBODY","ANYMORE","ANYTIME","ANXIETY","ANXIOUS","APOLOGY","APOSTLE","APPEASE","APPLAUD",
+"APPOINT","APPROVE","APRICOT","AQUATIC","AQUIFER","ARCHERY","ARCHIVE","ARCHWAY","ARDUOUS","ARMBAND",
+"AROUSAL","ARRAIGN","ARRANGE","ARRIVAL","ARTISTS","ARTWORK","ASCETIC","ASHTRAY","ASPHALT","ASPIRIN",
+"ASSAULT","ASTRIDE","ATHEIST","ATHLETE","ATTEMPT","ATTRACT","AUCTION","AUDIBLE","AUGMENT",
+"AUTOPSY","AVERAGE","AVIATOR","AVOCADO","AWAKING","AWESOME","AWKWARD","BABYSIT","BACKLIT","BACKLOG",
+"BACKRUB","BADLAND","BAGGAGE","BAILOUT","BALANCE","BALLBOY","BALLOON","BALONEY","BANANAS","BANDAGE",
+"BANDAID","BARGAIN","BASHFUL","BASTARD","BATTERY","BEDROOM","BEEHIVE","BELIEVE",
+"BENEATH","BENEFIT","BERRIES","BETWEEN","BICYCLE","BIFOCAL","BILLION","BIPOLAR","BISCUIT","BLOCKER",
+"BLOSSOM","BLOWOUT","BLUEJAY","BOYCOTT","BRAVERY","BREAKER","BREWERY",
+"BROWNIE","BROWSER","BUFFALO","BUILDER","BULLDOG","BURGERS","BURNOUT","BURRITO","CABINET","CALCIUM",
+"CAPITAL","CAPITOL","CAPTAIN","CAPTION","CAPTURE","CARAVAN","CARBARN",
+"CAREERS","CAREFUL","CARIBOU","CARRIER","CARTOON","CASCADE",
+"CATFISH","CAUTION","CENTRAL","CENTURY","CERTAIN","CHALICE","CHAMBER","CHANGES","CHANNEL","CHAPTER",
+"CHARGER","CHARITY","CHEAPER","CHEATER","CHECKER","CHECKUP","CHEDDAR","CHEERIO","CHEETAH",
+"CHERISH","CHICKEN","CHIMNEY","CHIPPER","CHOICES","CHOOSEY","CHOPPER","CHORALE","CHOWDER","CIRCUIT",
+"CLASSES","CLASSIC","CLEANER","CLOSELY","CLOTHES","COCKPIT","COCONUT","COLDEST","COLLAGE",
+"COLLECT","COLLEGE","COLONEL","COMBINE","COMBUST","COMEDIC","COMFORT","COMICAL","COMMAND","COMMEND",
+"COMMENT","COMMODE","COMMUNE","COMMUTE","COMPACT","COMPANY","COMPARE","COMPASS","COMPETE","COMPILE",
+"COMPLEX","COMPOSE","COMPUTE","COMRADE","CONCAVE","CONCEAL","CONCEDE","CONCEIT","CONCEPT",
+"CONCERN","CONCERT","CONCISE","CONCORD","CONDEMN","CONDONE","CONDUCT","CONDUIT","CONFESS","CONFIDE",
+"CONFINE","CONFIRM","CONFORM","CONFUSE","CONGEAL","CONICAL","CONIFER","CONJOIN","CONJURE","CONNECT",
+"CONQUER","CONSOLE","CONSORT","CONSULT","CONSUME","CONTACT","CONTAIN","CONTEND","CONTENT","CONTEST",
+"CONTEXT","CONTOUR","CONTROL","CONVENT","CONVICT","COOKIES","CORRECT","CORRUPT","COSTUME","COTTAGE",
+"COUNCIL","COUNTER","COUNTRY","COUPLES","COURAGE","COWGIRL","COWHIDE","CRACKER","CRAWLER",
+"CRAZILY","CREATOR","CREWCUT","CRIMSON","CRIPPLE","CROUTON","CRUCIFY","CRUELTY","CRUISER","CRUNCHY",
+"CRUSADE","CRYBABY","CRYSTAL","CUBICLE","CUISINE","CULPRIT","CULTURE","CULVERT","CUMULUS","CUPCAKE",
+"CUPLIKE","CURATOR","CURIOUS","CURRENT","CURSIVE","CURTAIL","CURTAIN","CUSHION","CUSTARD","CUSTODY",
+"CUTBACK","CUTICLE","CUTLERY","CUTLETS","CYCLONE","CYNICAL","DAYCARE","DAYTIME","DECADES","DECEIVE",
+"DECLARE","DECIBEL","DECIMAL","DECLINE","DECODER","DECORUM","DEFAULT","DEFENCE","DEFIANT","DEFICIT",
+"DEFLATE","DEFROST","DEFUSER","DEGRADE","DEGREES","DELIGHT","DELIVER","DELTOID","DEMERIT",
+"DENSITY","DENTIST","DENTURE","DEPLETE","DEPLORE","DEPOSIT","DEPRESS","DEPRIVE","DERVISH","DESCENT",
+"DESERVE","DESKTOP","DESPAIR","DESPITE","DESPOND","DESSERT","DESTAIN","DESTINY","DESTROY","DETRACT",
+"DEVELOP","DEVILRY","DEVIOUS","DEWDROP","DIAMOND","DIAPERS","DICTION","DIECAST","DIGITAL","DIGNITY",
+"DISABLE","DISAVOW","DISBAND","DISCARD","DISCERN","DISCORD","DISCUSS","DISDAIN","DISEASE","DISEUSE",
+"DISGUST","DISJOIN","DISLIKE","DISMAST","DISMISS","DISOBEY","DISPART","DISPLAY","DISPORT","DISPOSE",
+"DISPUTE","DISRATE","DISROBE","DISRUPT","DISSEAT","DISTORT","DISTURB","DISSECT","DISTANT","DISTEND",
+"DISTICH","DISTILL","DIVERSE","DIVIDED","DIVORCE","DOCTORS","DOLLARS","DOLPHIN","DOORWAY","DORMANT",
+"DRAUGHT","DREAMER","DRIVERS","DRYNESS","DURABLE","DYNAMIC","EARACHE","EARLIER","EARLOBE","EASTERN",
+"ECLIPSE","ECONOMY","EDUCATE","EGOTISM","ELASTIC","ELDERLY","ELEGANT","ELEMENT","ELEVATE","EMBASSY",
+"EMBRACE","EMOTION","EMPATHY","EMPRESS","ENCLOSE","ENDLESS","ENFORCE",
+"ENHANCE","ENLIGHT","ENVIOUS","ETERNAL","ETHICAL","EQUINOX","EQUATOR","EVASIVE","EXACTLY","EXAMPLE",
+"EXCITED","EXPENSE","EXPERTS","EXPLAIN","EXPLODE","EXPLORE","EXPRESS","EXTINCT","EXTRACT","EXTREME",
+"EYEBROW","EYELASH","FACEOFF","FACTOID","FACTORS","FACULTY","FAILURE","FANCLUB","FANTASY","FARMBOY",
+"FARMERS","FASHION","FASTEST","FATIGUE","FEATURE","FEDERAL","FERMENT","FERRIED","FICTION","FIFTEEN",
+"FIGHTER","FINALLY","FINANCE","FIREDOG","FIREFLY","FIREMAN","FITNESS","FIXTURE","FLOWERS","FLULIKE",
+"FLUSHOT","FOOLISH","FOOTAGE","FORBEAR","FOREARM","FOREIGN","FOREVER","FOREMAN","FORFEIT","FORGIVE",
+"FORMULA","FORSAKE","FORTUNE","FORWARD","FOXHOLE","FRAGILE","FRANTIC","FREEZER","FRECKLE","FREEDOM",
+"FREEWAY","FREIGHT","FRESHLY","FRIENDS","FRISBEE","FRITTER","FUMBLED","FURTHER","GAMBLER",
+"GARAGES","GARBAGE","GATEWAY","GENERAL","GENESIS","GENERIC","GENETIC","GETAWAY","GIRAFFE",
+"GLIMPSE","GLORIFY","GLUCOSE","GOODBYE","GORILLA","GOVERNS","GRADUAL","GRAMMAR","GRANDMA","GRANDPA",
+"GRANITE","GRANOLA","GRAPHIC","GRAVITY","GROCERY","HABITAT","HAIRCUT","HALIBUT","HAPPILY","HARBOUR",
+"HARVEST","HATCHET","HATEFUL","HEALTHY","HEIGHTS","HELPFUL","HEROISM","HERSELF",
+"HIGHEST","HIGHWAY","HIMSELF","HISTORY","HOLIDAY","HONESTY","HOPEFUL","HOTCAKE",
+"HOTDOGS","HUSBAND","HYDRANT","ICEBERG","ICICLES","IDEALLY","IDOLIZE","ILLICIT",
+"ILLNESS","IMAGINE","IMPOUND","IMPRESS","IMPROVE","INBOARD","INBOUND","INCENSE","INCISOR","INCLINE",
+"INCLOSE","INCLUDE","INCOMES","INCUBUS","INDOORS","INDULGE","INFANCY","INFERNO","INFIDEL","INFLAME",
+"INFLATE","INFLICT","INGRAIN","INGROWN","INHALER","INHERIT","INITIAL","INKBLOT","INKLING","INKWELL",
+"INLAYER","INQUIRE","INQUIRY","INSECTS","INSIDER","INSIGHT","INSPECT","INSPIRE","INSTALL","INSTANT",
+"INSTEAD","INSTILL","INSULAR","INSURER","INTENSE","INTERIM","INTERNS","INTROIT","INTRUDE","INTRUST",
+"INTWINE","INVADER","INVOICE","INVOLVE","ISLANDS","ISOLATE","ITEMIZE",
+"JASMINE","JEALOUS","JEWELRY","JOURNEY","JUSTICE","JUSTIFY",
+"KEYHOLE","KEYNOTE","KINGDOM","KINSHIP","KITCHEN","KITTENS","KNEECAP","LANTERN","LAUNDRY",
+"LAWSUIT","LAWYERS","LEADERS","LEARNER","LEATHER","LENSCAP","LESSONS","LETTERS","LIBERAL","LIBERTY",
+"LIBRARY","LICENSE","LIPREAD","LITERAL","LIVABLE","LOBSTER","LOGICAL","LOVABLE","LOVEBUG",
+"LULLABY","MACHINE","MADNESS","MAGICAL","MAGNIFY","MAILBAG","MAILBOX","MAILMAN","MAJESTY",
+"MALARIA","MANAGER","MANDATE","MANNERS","MARKERS","MARRIED","MASSAGE","MASSIVE","MASTERY",
+"MEANDER","MEASURE","MEDICAL","MEMBERS","MENTHOL","MERCURY","MERMAID","MESSAGE","METHANE",
+"MIDTERM","MIGRANT","MIGRATE","MILITIA","MILLION","MISDIAL","MISFILE","MISLEAD","MISREAD","MISSILE",
+"MISSION","MISTAKE","MIXTURE","MOBSTER","MODESTY","MONARCH","MONITOR","MONOLOG","MONSOON","MONSTER",
+"MONTAGE","MONTHLY","MOOCHER","MOONLIT","MORALLY","MORNING","MORONIC","MORTIFY","MORTISE","MUDFLAP",
+"MUDFLOW","MUFFLER","MUFFINS","MUNDANE","MUSICAL","MUSTANG","MUSTARD","MYSTERY","MYSTIFY","NAMETAG",
+"NAPKINS","NATIONS","NATIVES","NATURAL","NAUGHTY","NEAREST","NEBULAR","NECKTIE","NEEDLES",
+"NEGLECT","NERVOUS","NETWORK","NEURONS","NEUTRAL","NEUTRON","NEWBORN","NEWSBOY",
+"NICKELS","NIGHTLY","NITRATE","NOCTURN","NOISILY","NOMADIC","NOMINAL","NONSTOP","NOSTRIL","NOTABLE",
+"NOTABLY","NOTHING","NOVELTY","NOXIOUS","NUCLEAR","NUCLEUS","NUDNICK","NULLIFY","NUMBERS","NUMERAL",
+"NUNLIKE","NUNNERY","NURSERY","NURTURE","NUTCASE","OBESITY","OBSERVE","OBVIOUS","OCTAGON","OCTOPUS",
+"OFFENSE","OPERATE","OPINION","ORGANIC","OUTBACK","OUTCAST","OUTCOME","OUTDOOR",
+"OUTRAGE","OUTSIDE","OVERALL","PACKAGE","PAINFUL","PAINTER","PAJAMAS","PANTHER","PARADOX",
+"PARENTS","PARTIES","PARTNER","PASSION","PATIENT","PATRIOT","PAYMENT","PEANUTS","PENALTY","PENNIES",
+"PENSION","PERCENT","PERFECT","PERFORM","PERFUME","PERSIST","PHONICS","PHRASES","PHYSICS","PICTURE",
+"PIGEARS","PIGTAIL","PILGRIM","PINBALL","PINTAIL","PIONEER","PLASTIC","PLAYFUL","PLUNDER","POLITIC",
+"POLLUTE","POPCORN","POPTART","POPULAR","POSTAGE","POSTBOX","POSTMAN","PRAISES","PREBAKE","PREBOIL",
+"PRECEDE","PRECISE","PREDICT","PREEMPT","PREFACE","PREHEAT","PRELOAD","PRELUDE","PREMADE","PREMIER",
+"PREMISE","PREMIUM","PREPAID","PREPARE","PREPPIE","PREQUEL","PRESALE","PRESENT","PRESHOW","PRESOAK",
+"PRESUME","PRETEEN","PRETEND","PRETEST","PRETZEL","PREVAIL","PREVENT","PREVERB","PREVIEW","PREWASH",
+"PREWORN","PREYING","PRICIER","PRICKLY","PRIMAGE","PRIMARY","PRIMATE","PRINTER","PRIVACY","PRIVATE",
+"PRIVIES","PROBATE","PROBLEM","PROCEED","PROCESS","PROCTOR","PROCURE","PRODIGY","PRODUCE","PRODUCT",
+"PROFANE","PROFESS","PROFILE","PROFUSE","PROGENY","PROGRAM","PROJECT","PROLATE","PROLINE","PROLONG",
+"PROMISE","PROMOTE","PRONATE","PRONOUN","PROPANE","PROPHET","PROPOSE","PRORATE","PROSODY","PROSPER",
+"PROTECT","PROTEIN","PROTEST","PROTONS","PROUDLY","PROVERB","PROVIDE","PROVOKE","PROVOST","PROWESS",
+"PROWLER","PROXIES","PRUDENT","PUBERTY","PUBLISH","PUMPKIN","PUPPIES","PURPOSE","PURSUIT","PYRAMID",
+"QUALIFY","QUALITY","QUANTUM","QUARREL","QUARTER","QUICKEN","QUICKER","QUICKLY",
+"QUIETER","QUIETLY","QUILTER","QUININE","QUINTET","QUITTER","RACCOON","RACECAR","RACEWAY","RADIANT",
+"RADICAL","RAGTIME","RAGWEED","RAILCAR","RAINBOW","RAMBLER","RAMPANT","RAMPART","RANCHER","RAISINS",
+"RANSACK","RAPIDLY","RAPPORT","RAPTURE","RATTLER","RAVIOLI","REACTOR","REALITY","REALIZE","REBUILD",
+"RECEIPT","RECEIVE","RECHECK","RECLAIM","RECLINE","RECOVER","RECTIFY","RECYCLE",
+"REDCOAT","REDHEAD","REDLINE","REDNECK","REDNESS","REDTAIL","REDUCER","REDWOOD","REFEREE","REFLECT",
+"REFOCUS","REFRACT","REFRAIN","REFRESH","REFUGEE","REFUSAL","REFUTAL","REGATTA","REGIMEN","REGULAR",
+"REISSUE","REJOICE","RELATED","RELAXER","RELEARN","RELEASE","REMOUNT","REPTILE","RESCUED","RESCUER",
+"RESERVE","RESPECT","RESPOND","RESTATE","RESTORE","RETEACH","RETRAIN","REUNION","REUNITE","REVOLVE",
+"RIPCURL","RIPTIDE","ROSEBUD","ROUTINE","ROWBOAT",
+"SABBATH","SANDMAN","SARCASM","SATISFY","SCANDAL","SCENERY","SCHOLAR",
+"SEABASS","SEABIRD","SEAFOOD","SEAFOWL","SEAGULL","SEALANT","SEAPORT",
+"SEASICK","SEASIDE","SEASONS","SEAWALL","SEAWARD","SEAWEED","SECRECY","SECTION","SECULAR","SECURED",
+"SERIOUS","SELFISH","SELLOUT","SENSORS","SERVANT","SERVICE","SETBACK","SETTLER","SEVENTY","SEVERAL",
+"SHELTER","SHERIFF","SHIFTER","SHOOTER","SHORTER","SIDEARM","SINCERE","SITDOWN",
+"SIXTEEN","SKIJUMP","SKIMASK","SKIPOLE","SKYPARK","SLAVERY","SMARTER","SMUGGLE","SNOWMAN","SNUGGLE",
+"SOCIETY","SOLDIER","SOMEDAY","SPEAKER","SPECIAL","SPECIES","SPONSOR","STADIUM","STAMINA","STANDUP",
+"STAPLES","STATION","STORAGE","STORIES","STIRFRY","STIRRUP","STREAMS","STRIDES","STUDENT","SUBJECT",
+"SUBSIST","SUBTEXT","SUCCEED","SUCCESS","SUCROSE","SUGGEST","SULPHUR","SUMMARY","SUNBATH",
+"SUNBELT","SUNBEAM","SUNBURN","SUNDECK","SUNDIAL","SUNDOWN","SUNFISH","SUNGLOW","SUNLAMP",
+"SUNLAND","SUNLIKE","SUNRISE","SUNROOF","SUNROOM","SUNSETS","SUNSPOT","SUPPORT","SUPPOSE",
+"SUPREME","SURGEON","SURGERY","SURVIVE","SUSPEND","SWEATER","SWIMMER","SWOLLEN","SYMPTOM","TABLETS",
+"TABLOID","TADPOLE","TALENTS","TANGENT","TANGLED","TAXCUTS","TEACHER","TEENAGE","TENSION","TEQUILA",
+"TERMITE","TERRIFY","TESTIFY","TEXTILE","THEATRE","THERAPY","THERMOS","THINKER","THIRSTY","THOUGHT",
+"THUNDER","TIMEOUT","TOBACCO","TOENAIL","TOERING","TONIGHT","TONNAGE",
+"TOPDECK","TOPLESS","TOPLOAD","TOPPLES","TOPRACK","TOPSIDE","TOPSOIL","TORNADO","TORTURE","TOURIST",
+"TOWBOAT","TOWHEAD","TRACTOR","TRAITOR","TRANSIT","TREETOP","TRIBUTE","TROUBLE","TROUSER","TRUCKER",
+"TRUMPET","TWINKLE","TWISTER","TYPHOID","TYPICAL","TYRANNY","UNHAPPY","UNHEARD","UNHINGE",
+"UNHITCH","UNICORN","UNIFIED","UNIFORM","UNITARD","UNITARY","UNKEMPT","UNKNOWN","UNLATCH","UNLEARN",
+"UNLEASH","UNLEVEL","UNLOOSE","UNLUCKY","UNQUOTE","UNRAVEL","UNREADY","UNSCREW","UNSTACK","UNUSUAL",
+"UNWOUND","UNWOVEN","UPDRAFT","UPFRONT","UPGRADE","UPRIGHT","UPSCALE","UPSTAIR","UPSTATE","UPSURGE",
+"UPSWELL","UPSWEPT","UPSWING","UPTIGHT","URANIUM","URGENCY","URINARY","URINATE","UROLOGY","USUALLY",
+"UTENSIL","UTILITY","UTOPIAN","VACANCY","VACCINE","VAGRANT","VAGUELY","VALANCE","VALUATE","VALLEYS",
+"VAMPIRE","VANILLA","VANLOAD","VANPOOL","VARIANT","VARIETY","VEHICLE","VELVETY","VENISON","VENTURE",
+"VERDICT","VERSION","VIBRATE","VICEROY","VICTORY","VILLAGE","VINTAGE","VIOLATE","VIOLENT","VISITOR",
+"VOLCANO","WAFFLES","WALNUTS","WARBLER","WARFARE","WARRIOR","WASHERS","WEALTHY","WEATHER","WEBCAST",
+"WEBSITE","WEEKEND","WELCOME","WELFARE","WESTERN","WETNESS","WETSUIT","WHOEVER","WINDOWS","WINNERS",
+"WIPEOUT","WISEMAN","WITHOUT","WITNESS","WORLDLY","WORSHIP","WRESTLE","WRONGED","ZEALOUS"
+];
+
+var KBROWS=[["Q","W","E","R","T","Y","U","I","O","P"],["A","S","D","F","G","H","J","K","L"],["Z","X","C","V","B","N","M"]];
+var MAX_WRONG=20;
+
+function getTodayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function seedIdx(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h)%WORDS.length;}
+function getDailyWord(){return WORDS[seedIdx(getTodayStr())];}
+
+function loadStats(){try{var r=localStorage.getItem('oneword_stats');if(r)return JSON.parse(r);}catch(e){}return{currentStreak:0,maxStreak:0,played:0,won:0,lastDate:null};}
+function saveStats(s){try{localStorage.setItem('oneword_stats',JSON.stringify(s));}catch(e){}}
+function loadToday(){try{var r=localStorage.getItem('oneword_today');if(r){var s=JSON.parse(r);if(s.date===getTodayStr())return s;}}catch(e){}return null;}
+function saveToday(){try{localStorage.setItem('oneword_today',JSON.stringify({date:getTodayStr(),revealed:revealed,guessedPerTile:guessedPerTile,wrongGuesses:wrongGuesses,gameOver:gameOver,won:won,selectedTile:selectedTile}));}catch(e){}}
+
+var word=getDailyWord();
+var revealed,selectedTile,wrongGuesses,guessedPerTile,gameOver,won;
+var sv=loadToday();
+if(sv){revealed=sv.revealed;selectedTile=sv.selectedTile;wrongGuesses=sv.wrongGuesses;guessedPerTile=sv.guessedPerTile;gameOver=sv.gameOver;won=sv.won;}
+else{revealed=Array(7).fill(null);selectedTile=null;wrongGuesses=0;guessedPerTile=[[],[],[],[],[],[],[]];gameOver=false;won=false;}
+
+var tilesEl=document.getElementById('tiles');
+var kbEl=document.getElementById('keyboard');
+var instrEl=document.getElementById('instruction');
+var goEl=document.getElementById('game-over');
+var streakEl=document.getElementById('streak-bar');
+
+function render(){
+  var rem=MAX_WRONG-wrongGuesses;
+  var revCount=revealed.filter(function(l){return l!==null;}).length;
+  var remEl=document.getElementById('remaining');
+  remEl.textContent=rem;
+  remEl.className='num '+(rem<=3?'red':'gold');
+  document.getElementById('revealed-count').textContent=revCount;
+  document.getElementById('wrong-count').textContent=wrongGuesses;
+  var mf=document.getElementById('meter-fill');
+  mf.style.width=(rem/MAX_WRONG*100)+'%';
+  mf.style.background=rem<=3?'linear-gradient(90deg,#fc5c7d,#ff3b5c)':'linear-gradient(90deg,#f0c27f,#fc5c7d)';
+  var st=loadStats();
+  streakEl.innerHTML='Streak: <span>'+st.currentStreak+'</span> &middot; Best: <span>'+st.maxStreak+'</span> &middot; Played: <span>'+st.played+'</span>';
+  renderTiles();
+  renderKB();
+  if(!gameOver){instrEl.style.display='';instrEl.textContent=selectedTile!==null?'Guessing position '+(selectedTile+1)+' \u2014 pick a letter':'Tap a tile to start guessing';}
+  else{instrEl.style.display='none';}
+  kbEl.style.display=gameOver?'none':'';
+  if(gameOver){
+    goEl.style.display='';
+    if(won){
+      goEl.innerHTML='<div class="win-text">Brilliant!</div><p style="color:#8888a0;font-size:14px">You solved it with '+rem+' guesses remaining</p><p class="tomorrow-msg">Come back tomorrow for another word!</p><button class="share-btn" onclick="shareResult()">Share Result</button><span id="copied-toast"></span>';
+    }else{
+      goEl.innerHTML='<div class="lose-text">Out of guesses</div><p style="color:#8888a0;font-size:14px;margin-bottom:4px">The word was</p><div class="reveal-word">'+word+'</div><p class="tomorrow-msg">Come back tomorrow for another word!</p><button class="share-btn" onclick="shareResult()">Share Result</button><span id="copied-toast"></span>';
+    }
+  }else{goEl.style.display='none';}
+}
+
+function renderTiles(){
+  tilesEl.innerHTML='';
+  for(var i=0;i<7;i++){
+    var t=document.createElement('div');t.className='tile';
+    if(revealed[i]!==null)t.classList.add('revealed');
+    if(selectedTile===i&&revealed[i]===null&&!gameOver)t.classList.add('selected');
+    var p=document.createElement('div');p.className='pos';p.textContent=i+1;t.appendChild(p);
+    var l=document.createElement('div');l.className='letter';l.textContent=revealed[i]||'';t.appendChild(l);
+    if(revealed[i]===null&&guessedPerTile[i].length>0){var w=document.createElement('div');w.className='wrong-letters';w.textContent=guessedPerTile[i].join(' ');t.appendChild(w);}
+    (function(idx){t.addEventListener('click',function(){if(gameOver||revealed[idx]!==null)return;selectedTile=selectedTile===idx?null:idx;render();});})(i);
+    tilesEl.appendChild(t);
+  }
+}
+
+function renderKB(){
+  kbEl.innerHTML='';
+  KBROWS.forEach(function(row){
+    var r=document.createElement('div');r.className='kb-row';
+    row.forEach(function(letter){
+      var k=document.createElement('button');k.className='kb-key';k.textContent=letter;
+      if(selectedTile!==null&&guessedPerTile[selectedTile].indexOf(letter)!==-1)k.classList.add('dimmed');
+      k.addEventListener('click',function(){guessLetter(letter);});
+      r.appendChild(k);
+    });
+    kbEl.appendChild(r);
+  });
+}
+
+function showDupe(idx){var el=tilesEl.children[idx];if(!el)return;var ex=el.querySelector('.dupe-msg');if(ex)ex.remove();var m=document.createElement('div');m.className='dupe-msg';m.textContent='Already guessed!';el.appendChild(m);setTimeout(function(){m.remove();},1200);}
+function shakeTile(idx){var el=tilesEl.children[idx];if(!el)return;el.classList.add('shake');setTimeout(function(){el.classList.remove('shake');},400);}
+function popTile(idx){var el=tilesEl.children[idx];if(!el)return;el.classList.add('pop');setTimeout(function(){el.classList.remove('pop');render();},400);}
+function findNext(cur){for(var i=1;i<=7;i++){var idx=(cur+i)%7;if(revealed[idx]===null)return idx;}return null;}
+
+function endGame(didWin){
+  gameOver=true;won=didWin;
+  var stats=loadStats();var today=getTodayStr();
+  if(stats.lastDate!==today){
+    stats.played++;
+    if(didWin){stats.won++;stats.currentStreak++;if(stats.currentStreak>stats.maxStreak)stats.maxStreak=stats.currentStreak;}
+    else{stats.currentStreak=0;}
+    stats.lastDate=today;saveStats(stats);
+  }
+  saveToday();render();
+}
+
+function guessLetter(letter){
+  if(gameOver||selectedTile===null||revealed[selectedTile]!==null)return;
+  if(guessedPerTile[selectedTile].indexOf(letter)!==-1){showDupe(selectedTile);return;}
+  if(letter===word[selectedTile]){
+    revealed[selectedTile]=letter;var idx=selectedTile;saveToday();render();popTile(idx);
+    if(revealed.every(function(l){return l!==null;})){setTimeout(function(){endGame(true);},600);}
+    else{selectedTile=findNext(idx);saveToday();render();}
+  }else{
+    guessedPerTile[selectedTile].push(letter);wrongGuesses++;var idx2=selectedTile;saveToday();render();shakeTile(idx2);
+    if(wrongGuesses>=MAX_WRONG)endGame(false);
+  }
+}
+
+function buildShare(){
+  var rem=MAX_WRONG-wrongGuesses;var grid='';
+  for(var i=0;i<7;i++)grid+=revealed[i]!==null?'\u{1F7E9}':'\u2B1B';
+  var res=won?'Solved with '+rem+'/'+MAX_WRONG+' remaining!':'Not this time...';
+  return 'One Word \u00B7 '+getTodayStr()+'\n'+grid+'\n'+res+'\nhttps://thehumanside.tech/oneword/';
+}
+function shareResult(){
+  var text=buildShare();
+  if(navigator.share){navigator.share({text:text}).catch(function(){copyText(text);});}
+  else{copyText(text);}
+}
+function copyText(text){
+  navigator.clipboard.writeText(text).then(function(){
+    var t=document.getElementById('copied-toast');
+    if(t){t.innerHTML='<span class="copied-toast">Copied to clipboard!</span>';setTimeout(function(){t.innerHTML='';},2000);}
+  }).catch(function(){});
+}
+
+document.addEventListener('keydown',function(e){
+  if(gameOver)return;
+  var letter=e.key.toUpperCase();
+  if(/^[A-Z]$/.test(letter))guessLetter(letter);
+  if(e.key==='ArrowRight'&&selectedTile!==null){var n=findNext(selectedTile);if(n!==null){selectedTile=n;render();}}
+  if(e.key==='ArrowLeft'&&selectedTile!==null){for(var i=1;i<=7;i++){var idx=(selectedTile-i+7)%7;if(revealed[idx]===null){selectedTile=idx;render();break;}}}
+});
+
+render();
+</script>
+</body>
+</html>
